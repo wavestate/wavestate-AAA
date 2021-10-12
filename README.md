@@ -1,9 +1,13 @@
-WaveState
-----------
+WaveState.AAA
+---------------
 
-This is a collection of projects under the wavestate package namespace for
-modeling interferometers, circuits, quantum states, and control systems. This is
-the base metapackage to install the others.
+Implements the AAA algorithm for rational approximation from
 
-It's version will be updated as subpackages are migrated into the namespace.
+SIAM J. Sci. Comput., 40(3), A1494–A1522. (29 pages)
+Yuji Nakatsukasa, Olivier Sète, and Lloyd N. Trefethen
+https://doi.org/10.1137/16M1106122
+
+
+Additionally, this implementation includes Hermitian symmetry to improve accuracy for transfer functions of real timeseries.
+
 
