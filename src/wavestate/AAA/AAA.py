@@ -16,15 +16,15 @@ def residuals(xfer, fit, w, rtype):
     if callable(rtype):
         return rtype(xfer, fit)
     R = fit / xfer
-    if rtype == 'zeros':
+    if rtype == "zeros":
         return w * (R - 1)
-    elif rtype == 'poles':
-        return w * (1/R - 1)
-    elif rtype == 'dualA':
-        return w * (0.5*R + 0.5/R - 1)
-    elif rtype == 'dualB':
-        return w * (R - 1/R)/2
-    elif rtype == 'log':
+    elif rtype == "poles":
+        return w * (1 / R - 1)
+    elif rtype == "dualA":
+        return w * (0.5 * R + 0.5 / R - 1)
+    elif rtype == "dualB":
+        return w * (R - 1 / R) / 2
+    elif rtype == "log":
         R_abs = abs(R)
         log_re = w * np.log(R_abs)
         log_im = w * R.imag / R_abs
@@ -33,50 +33,42 @@ def residuals(xfer, fit, w, rtype):
         raise RuntimeError("Unrecognized residuals type")
 
 
-def tf_bary_interp(
-        F_Hz,
-        zvals,
-        fvals,
-        wvals
-):
-    sF_Hz = 1j*F_Hz
+def tf_bary_interp(F_Hz, zvals, fvals, wvals):
+    sF_Hz = 1j * F_Hz
     w_idx = 0
     N = 0
     D = 0
     idx_f_repl = []
-    with np.errstate(divide='ignore', invalid='ignore'):
+    with np.errstate(divide="ignore", invalid="ignore"):
         for idx, z in enumerate(zvals):
             f = fvals[idx]
 
             if z == 0:
                 w = wvals[w_idx]
                 w_idx += 1
-                assert(abs(f.imag/f.real) < 1e-13)
-                bary_Dw = w/(sF_Hz - z)
+                assert abs(f.imag / f.real) < 1e-13
+                bary_Dw = w / (sF_Hz - z)
                 for idx in np.argwhere(~np.isfinite(bary_Dw))[:, 0]:
                     idx_f_repl.append((idx, f))
                 N = N + f * bary_Dw
                 D = D + bary_Dw
             else:
                 w_r = wvals[w_idx]
-                w_i = wvals[w_idx+1]
+                w_i = wvals[w_idx + 1]
                 w_idx += 2
-                bary_D = 1/(sF_Hz - z)
-                bary_Dc = 1/(sF_Hz - z.conjugate())
+                bary_D = 1 / (sF_Hz - z)
+                bary_Dc = 1 / (sF_Hz - z.conjugate())
                 for idx in np.argwhere(~np.isfinite(bary_D))[:, 0]:
                     idx_f_repl.append((idx, f))
                 for idx in np.argwhere(~np.isfinite(bary_Dc))[:, 0]:
                     idx_f_repl.append((idx, f))
 
-                #this is the TF-symmetric version with real weights
+                # this is the TF-symmetric version with real weights
                 N = N + (
                     w_r * (f * bary_D + f.conjugate() * bary_Dc)
                     - 1j * w_i * (f * bary_D - f.conjugate() * bary_Dc)
                 )
-                D = D + (
-                    w_r * (bary_D + bary_Dc)
-                    - 1j * w_i * (bary_D - bary_Dc)
-                )
+                D = D + (w_r * (bary_D + bary_Dc) - 1j * w_i * (bary_D - bary_Dc))
         xfer = N / D
     for idx, f in idx_f_repl:
         xfer[idx] = f
@@ -87,16 +79,16 @@ def tf_bary_zpk(
     zvals,
     fvals,
     wvals,
-    minreal_cutoff = 1e-2,
+    minreal_cutoff=1e-2,
 ):
-    #evaluate poles and zeros in arrowhead form
-    #these are modified for the symmetry conditions to be a real matrix
+    # evaluate poles and zeros in arrowhead form
+    # these are modified for the symmetry conditions to be a real matrix
 
-    #if zero is present, it must be the first element
-    assert(not np.any(zvals[1:] == 0))
+    # if zero is present, it must be the first element
+    assert not np.any(zvals[1:] == 0)
 
-    #len(zvals) must be p_order
-    #len(wvals) must be order
+    # len(zvals) must be p_order
+    # len(wvals) must be order
 
     p_order = len(wvals)
     B = np.eye(p_order + 1)
@@ -107,58 +99,58 @@ def tf_bary_zpk(
     Ez = np.zeros((p_order + 1, p_order + 1))
     Ez[1:, 0] = 1
     if zvals[0] == 0:
-        Ep[0, 1]  = wvals[0]
+        Ep[0, 1] = wvals[0]
         Ep[0, 2::2] = wvals[1::2] + wvals[2::2]
         Ep[0, 3::2] = wvals[1::2] - wvals[2::2]
-        #gain_d = wvals[0] + 2*np.sum(wvals[1::2])
+        # gain_d = wvals[0] + 2*np.sum(wvals[1::2])
 
-        Ez[0, 1]  = (wvals[0] * fvals[0]).real
-        c = (wvals[1::2] + wvals[2::2]) + (wvals[1::2] - wvals[2::2])*1j
+        Ez[0, 1] = (wvals[0] * fvals[0]).real
+        c = (wvals[1::2] + wvals[2::2]) + (wvals[1::2] - wvals[2::2]) * 1j
         cx = c * fvals[1:]
         Ez[0, 2::2] = cx.real
         Ez[0, 3::2] = cx.imag
-        #gain_n = (wvals[0] * fvals[0].real) + 2*np.sum(wvals[1::2]*fvals[1:].real + wvals[2::2]*fvals[1:].imag)
+        # gain_n = (wvals[0] * fvals[0].real) + 2*np.sum(wvals[1::2]*fvals[1:].real + wvals[2::2]*fvals[1:].imag)
         offs = 1
     else:
         Ep[0, 1::2] = wvals[0::2] + wvals[1::2]
         Ep[0, 2::2] = wvals[0::2] - wvals[1::2]
-        #gain_d = 2*np.sum(wvals[0::2])
+        # gain_d = 2*np.sum(wvals[0::2])
 
-        c = (wvals[0::2] + wvals[1::2]) + (wvals[0::2] - wvals[1::2])*1j
+        c = (wvals[0::2] + wvals[1::2]) + (wvals[0::2] - wvals[1::2]) * 1j
         cx = c * fvals[0:]
         Ez[0, 1::2] = cx.real
         Ez[0, 2::2] = cx.imag
-        #gain_n = 2*np.sum(wvals[0::2]*fvals.real + wvals[1::2]*fvals.imag)
+        # gain_n = 2*np.sum(wvals[0::2]*fvals.real + wvals[1::2]*fvals.imag)
         offs = 0
-    #TODO, use numpy tricks for diag/offdiag filling instead this for-loop
+    # TODO, use numpy tricks for diag/offdiag filling instead this for-loop
     for idx, f in enumerate(zvals[offs:]):
-        Ep[offs + 1+2*idx, offs + 1+2*idx] = f.real
-        Ep[offs + 2+2*idx, offs + 2+2*idx] = f.real
-        Ep[offs + 1+2*idx, offs + 2+2*idx] = f.imag
-        Ep[offs + 2+2*idx, offs + 1+2*idx] = -f.imag
-        Ez[offs + 1+2*idx, offs + 1+2*idx] = f.real
-        Ez[offs + 2+2*idx, offs + 2+2*idx] = f.real
-        Ez[offs + 1+2*idx, offs + 2+2*idx] = f.imag
-        Ez[offs + 2+2*idx, offs + 1+2*idx] = -f.imag
-    poles = scipy.linalg.eig(Ep, B, left = False, right = False)
+        Ep[offs + 1 + 2 * idx, offs + 1 + 2 * idx] = f.real
+        Ep[offs + 2 + 2 * idx, offs + 2 + 2 * idx] = f.real
+        Ep[offs + 1 + 2 * idx, offs + 2 + 2 * idx] = f.imag
+        Ep[offs + 2 + 2 * idx, offs + 1 + 2 * idx] = -f.imag
+        Ez[offs + 1 + 2 * idx, offs + 1 + 2 * idx] = f.real
+        Ez[offs + 2 + 2 * idx, offs + 2 + 2 * idx] = f.real
+        Ez[offs + 1 + 2 * idx, offs + 2 + 2 * idx] = f.imag
+        Ez[offs + 2 + 2 * idx, offs + 1 + 2 * idx] = -f.imag
+    poles = scipy.linalg.eig(Ep, B, left=False, right=False)
     poles = poles[np.isfinite(poles)]
-    zeros = scipy.linalg.eig(Ez, B, left = False, right = False)
+    zeros = scipy.linalg.eig(Ez, B, left=False, right=False)
     zeros = zeros[np.isfinite(zeros)]
 
-    zeros, poles = order_reduce_zp(zeros, poles, Q_rank_cutoff = minreal_cutoff)
+    zeros, poles = order_reduce_zp(zeros, poles, Q_rank_cutoff=minreal_cutoff)
 
     TFvals_rel = []
     for f, z in zip(fvals, zvals):
-        Gz = (z - zeros)
-        Gp = (z - poles)
-        TF = np.prod([gz / gp for gz, gp in itertools.zip_longest(Gz, Gp, fillvalue = 1)])
+        Gz = z - zeros
+        Gp = z - poles
+        TF = np.prod([gz / gp for gz, gp in itertools.zip_longest(Gz, Gp, fillvalue=1)])
         TFvals_rel.append(f / TF)
     TFvals_rel = np.asarray(TFvals_rel)
-    #print(TFvals_rel)
+    # print(TFvals_rel)
     gain = np.median(TFvals_rel.real)
-    #this may also get computed using the gain_n/gain_d above, but that fails
-    #when poles or zeros are dropped since one of gain_n or gain_d will be
-    #numerically 0 in that case
+    # this may also get computed using the gain_n/gain_d above, but that fails
+    # when poles or zeros are dropped since one of gain_n or gain_d will be
+    # numerically 0 in that case
 
     return zeros, poles, gain
 
@@ -166,18 +158,18 @@ def tf_bary_zpk(
 def tfAAA(
     F_Hz,
     xfer,
-    exact      = True,
-    res_tol    = None,
-    s_tol      = None,
-    w          = 1,
-    w_res      = None,
-    degree_max = 30,
-    nconv      = None,
-    nrel       = 10,
-    rtype      = 'log',
-    lf_eager   = True,
-    supports   = (),
-    minreal_cutoff = None,
+    exact=True,
+    res_tol=None,
+    s_tol=None,
+    w=1,
+    w_res=None,
+    degree_max=30,
+    nconv=None,
+    nrel=10,
+    rtype="log",
+    lf_eager=True,
+    supports=(),
+    minreal_cutoff=None,
 ):
     if exact:
         if res_tol is None:
@@ -187,7 +179,7 @@ def tfAAA(
         if nconv is None:
             nconv = 1
         if minreal_cutoff is None:
-            minreal_cutoff = 1e-3,
+            minreal_cutoff = (1e-3,)
     else:
         if res_tol is None:
             res_tol = 0
@@ -196,7 +188,7 @@ def tfAAA(
         if nconv is None:
             nconv = 2
         if minreal_cutoff is None:
-            minreal_cutoff = 1e-3,
+            minreal_cutoff = (1e-3,)
 
     F_Hz = np.asarray(F_Hz)
     xfer = np.asarray(xfer)
@@ -207,15 +199,15 @@ def tfAAA(
 
     F_Hz, xfer, w, w_res = domain_sort(F_Hz, xfer, w, w_res)
 
-    sF_Hz = 1j*F_Hz
+    sF_Hz = 1j * F_Hz
 
     fit_list = []
-    #these are the matrices and data related to the fit
+    # these are the matrices and data related to the fit
     fvals = []
     zvals = []
     Vn_list = []
     Vd_list = []
-    #and the domain and data
+    # and the domain and data
     xfer_drop = xfer.copy()
     sF_Hz_drop = sF_Hz.copy()
     w_drop = w.copy()
@@ -249,36 +241,41 @@ def tfAAA(
             _drop_inplace(idx, v)
 
         if z == 0:
-            assert(abs(f.imag/f.real) < 1e-13)
-            bary_D = 1/(sF_Hz_drop - z)
-            with np.errstate(divide='ignore', invalid='ignore'):
+            assert abs(f.imag / f.real) < 1e-13
+            bary_D = 1 / (sF_Hz_drop - z)
+            with np.errstate(divide="ignore", invalid="ignore"):
                 Vn_list.append(f * bary_D)
                 Vd_list.append(bary_D)
         else:
-            bary_D = 1/(sF_Hz_drop - z)
-            bary_Dc = 1/(sF_Hz_drop - z.conjugate())
+            bary_D = 1 / (sF_Hz_drop - z)
+            bary_Dc = 1 / (sF_Hz_drop - z.conjugate())
 
-            #this is the TF-symmetric version with real weights
+            # this is the TF-symmetric version with real weights
             Vn_list.append(f * bary_D + f.conjugate() * bary_Dc)
             Vd_list.append(bary_D + bary_Dc)
-            Vn_list.append(-1j*(f * bary_D - f.conjugate() * bary_Dc))
-            Vd_list.append(-1j*(bary_D - bary_Dc))
-        #print(z, f, bary_D)
+            Vn_list.append(-1j * (f * bary_D - f.conjugate() * bary_Dc))
+            Vd_list.append(-1j * (bary_D - bary_Dc))
+        # print(z, f, bary_D)
         return
 
     if exact:
+
         def res_max_heuristic(res):
             return abs(res)
+
     else:
+
         def res_max_heuristic(res):
             rSup = np.cumsum(res)
             res_max = 0 * abs(res)
             for b in [4, 8, 16, 32, 64]:
-                ravg = (rSup[b:] - rSup[:-b]) / b**0.5
-                res_max[b//2:-b//2] = np.maximum(abs(ravg), res_max[b//2:-b//2])
+                ravg = (rSup[b:] - rSup[:-b]) / b ** 0.5
+                res_max[b // 2 : -b // 2] = np.maximum(
+                    abs(ravg), res_max[b // 2 : -b // 2]
+                )
             return res_max
 
-    #adds the lowest frequency point to ensure good DC fitting
+    # adds the lowest frequency point to ensure good DC fitting
     if supports:
         for f in supports:
             idx = np.searchsorted((sF_Hz_drop / 1j).real, f)
@@ -293,12 +290,7 @@ def tfAAA(
 
     if not skip_add:
         fit_drop = np.median(abs(xfer_drop))
-        res = residuals(
-            xfer  = xfer_drop,
-            fit   = fit_drop,
-            w     = w_res_drop,
-            rtype = rtype
-        )
+        res = residuals(xfer=xfer_drop, fit=fit_drop, w=w_res_drop, rtype=rtype)
     else:
         res = None
 
@@ -315,15 +307,15 @@ def tfAAA(
         Vd = np.asarray(Vd_list).T
 
         for _i in range(nconv):
-            Na = np.mean(abs(N_drop)**2)**0.5/nrel
+            Na = np.mean(abs(N_drop) ** 2) ** 0.5 / nrel
             Hd1 = Vd * xfer_drop.reshape(-1, 1)
             Hn1 = Vn
-            Hs1 = (Hd1-Hn1) * (w_drop / (abs(N_drop) + Na)).reshape(-1, 1)
+            Hs1 = (Hd1 - Hn1) * (w_drop / (abs(N_drop) + Na)).reshape(-1, 1)
 
-            Da = np.mean(abs(D_drop)**2)**0.5/nrel
+            Da = np.mean(abs(D_drop) ** 2) ** 0.5 / nrel
             Hd2 = Vd
             Hn2 = Vn * (1 / xfer_drop).reshape(-1, 1)
-            Hs2 = (Hd2-Hn2) * (w_drop / (abs(D_drop) + Da)).reshape(-1, 1)
+            Hs2 = (Hd2 - Hn2) * (w_drop / (abs(D_drop) + Da)).reshape(-1, 1)
 
             Hblock = [
                 [Hs1.real],
@@ -341,115 +333,109 @@ def tfAAA(
 
             fit_drop = N_drop / D_drop
 
-        srel = (s[-1] / s[0])
+        srel = s[-1] / s[0]
 
-        res = residuals(
-            xfer  = xfer_drop,
-            fit   = fit_drop,
-            w     = w_res_drop,
-            rtype = rtype
-        )
-        res_asq = res.real**2 + res.imag**2
-        res_rms = np.mean(res_asq)**0.5
-        res_max = np.max(res_asq)**0.5
+        res = residuals(xfer=xfer_drop, fit=fit_drop, w=w_res_drop, rtype=rtype)
+        res_asq = res.real ** 2 + res.imag ** 2
+        res_rms = np.mean(res_asq) ** 0.5
+        res_max = np.max(res_asq) ** 0.5
 
         fit_list.append(
             dict(
-                order   = len(wvals),
-                p_order = len(fvals),
-                wvals   = wvals,
-                srel    = srel,
-                s       = s,
-                res_asq = res_asq,
-                res_rms = res_rms,
-                res_max = res_max,
+                order=len(wvals),
+                p_order=len(fvals),
+                wvals=wvals,
+                srel=srel,
+                s=s,
+                res_asq=res_asq,
+                res_rms=res_rms,
+                res_max=res_max,
             )
         )
 
         if (res_max < res_tol) or (srel < s_tol):
             break
 
-    res_max_asq = res_max_heuristic(res)**2
+    res_max_asq = res_max_heuristic(res) ** 2
 
     def interp(F_Hz, p_order):
         return tf_bary_interp(
             F_Hz,
-            zvals = zvals[:p_order],
-            fvals = fvals[:p_order],
-            #p_order doesn't directly correspond to wvals, but this is OK since
-            #only the ones matched to zvals and fvals are used
-            wvals = wvals,
+            zvals=zvals[:p_order],
+            fvals=fvals[:p_order],
+            # p_order doesn't directly correspond to wvals, but this is OK since
+            # only the ones matched to zvals and fvals are used
+            wvals=wvals,
         )
 
     results = rtAAAResults(
-        zvals_full = zvals,
-        fvals_full = fvals,
-        fit_list   = fit_list,
-        debug      = Structish(locals()),
-        minreal_cutoff = minreal_cutoff,
+        zvals_full=zvals,
+        fvals_full=fvals,
+        fit_list=fit_list,
+        debug=Structish(locals()),
+        minreal_cutoff=minreal_cutoff,
     )
     return results
 
 
 class rtAAAResults(object):
-
     def __init__(
         self,
-            zvals_full,
-            fvals_full,
-            fit_list,
-            minreal_cutoff = 1e-2,
-            debug = None,
+        zvals_full,
+        fvals_full,
+        fit_list,
+        minreal_cutoff=1e-2,
+        debug=None,
     ):
         self.zvals_full = np.asarray(zvals_full)
         self.fvals_full = np.asarray(fvals_full)
-        self.fit_list   = fit_list
-        self.fit_idx    = len(fit_list) - 1
-        self.fit_dict   = self.fit_list[self.fit_idx]
-        self.p_order    = self.fit_dict['p_order']
-        self.order      = self.fit_dict['order']
-        self.wvals      = self.fit_dict['wvals']
-        self.zvals      = self.zvals_full[:self.p_order]
-        self.fvals      = self.fvals_full[:self.p_order]
+        self.fit_list = fit_list
+        self.fit_idx = len(fit_list) - 1
+        self.fit_dict = self.fit_list[self.fit_idx]
+        self.p_order = self.fit_dict["p_order"]
+        self.order = self.fit_dict["order"]
+        self.wvals = self.fit_dict["wvals"]
+        self.zvals = self.zvals_full[: self.p_order]
+        self.fvals = self.fvals_full[: self.p_order]
         self.minreal_cutoff = minreal_cutoff
         self.zpks_by_fit_idx = dict()
         if debug is not None:
-            self.debug      = debug
+            self.debug = debug
         return
 
     def choose(self, order):
-        #go down in index
+        # go down in index
         for idx in range(len(self.fit_list) - 1, -1, -1):
-            if self.fit_list[idx]['order'] < order:
+            if self.fit_list[idx]["order"] < order:
                 break
         else:
-            #TODO: warn user
+            # TODO: warn user
             pass
-        self.fit_idx  = idx
+        self.fit_idx = idx
         self.fit_dict = self.fit_list[self.fit_idx]
-        self.p_order  = self.fit_dict['p_order']
-        self.order    = self.fit_dict['order']
-        self.wvals      = self.fit_dict['wvals']
-        self.zvals      = self.zvals_full[:self.p_order]
-        self.fvals      = self.fvals_full[:self.p_order]
+        self.p_order = self.fit_dict["p_order"]
+        self.order = self.fit_dict["order"]
+        self.wvals = self.fit_dict["wvals"]
+        self.zvals = self.zvals_full[: self.p_order]
+        self.fvals = self.fvals_full[: self.p_order]
         return
 
     def __call__(self, F_Hz):
         return tf_bary_interp(
             F_Hz,
-            zvals = self.zvals,
-            fvals = self.fvals,
-            wvals = self.wvals,
+            zvals=self.zvals,
+            fvals=self.fvals,
+            wvals=self.wvals,
         )
 
     def _zpk_compute(self):
         zpk = self.zpks_by_fit_idx.get(self.fit_idx, None)
         if zpk is None:
             zpk = tf_bary_zpk(
-                fvals = self.fvals,
-                zvals = self.zvals,
-                wvals = self.wvals,
-                minreal_cutoff = self.minreal_cutoff,
+                fvals=self.fvals,
+                zvals=self.zvals,
+                wvals=self.wvals,
+                minreal_cutoff=self.minreal_cutoff,
             )
             self.zpks_by_fit_idx[self.fit_idx] = zpk
         return zpk
@@ -479,8 +465,8 @@ class rtAAAResults(object):
 
 
 def _drop_inplace(idx, arr):
-    arr[idx:-1] = arr[idx+1:]
-    arr.resize((len(arr) - 1,), refcheck = False)
+    arr[idx:-1] = arr[idx + 1 :]
+    arr.resize((len(arr) - 1,), refcheck=False)
 
 
 def domain_sort(X, *Y):
@@ -509,7 +495,9 @@ class Structish(object):
         if len(args) == 1:
             self.__dict__.update(args[0])
         elif len(args) > 1:
-            raise RuntimeError("Structish only takes one argument (a dictionary) and kwargs")
+            raise RuntimeError(
+                "Structish only takes one argument (a dictionary) and kwargs"
+            )
         self.__dict__.update(kwargs)
 
 
@@ -518,18 +506,21 @@ def Q_rank_calc(z, p):
         if p.real == z.real:
             Q_rank = 0
         else:
-            #TODO
-            #should use the data spacing to regularize this case
+            # TODO
+            # should use the data spacing to regularize this case
             Q_rank = 1e3
     else:
-        res_ratio = (z.real/p.real)
-        Q_rank = abs(p-z) * (1/(p.real)**2 + 1/(z.real)**2)**.5 + abs(res_ratio - 1/res_ratio)
+        res_ratio = z.real / p.real
+        Q_rank = abs(p - z) * (1 / (p.real) ** 2 + 1 / (z.real) ** 2) ** 0.5 + abs(
+            res_ratio - 1 / res_ratio
+        )
     return Q_rank
 
 
 def order_reduce_zp(
-    zeros, poles,
-    Q_rank_cutoff = 1e-5,
+    zeros,
+    poles,
+    Q_rank_cutoff=1e-5,
 ):
     rpB = nearest_pairs(zeros, poles)
     Zl = list(rpB.l1_remain)
@@ -537,8 +528,8 @@ def order_reduce_zp(
 
     for z, p in rpB.r12_list:
         Q_rank = Q_rank_calc(p, z)
-        #print("rank: ", p, z, Q_rank)
-        #print(z, p, Q_rank)
+        # print("rank: ", p, z, Q_rank)
+        # print(z, p, Q_rank)
         if Q_rank < Q_rank_cutoff:
             continue
         Zl.append(z)
@@ -548,15 +539,16 @@ def order_reduce_zp(
     Pl = np.asarray(Pl)
     return Zl, Pl
 
+
 def nearest_pairs(
     l1,
     l2,
-    metric_pair_dist = None,
+    metric_pair_dist=None,
 ):
-    #TODO, allow other rankings than distance
+    # TODO, allow other rankings than distance
 
     rpB = nearest_unique_pairs(l1, l2, metric_pair_dist)
-    #not going to maintain these lists
+    # not going to maintain these lists
     del rpB.idx_list
     del rpB.l1
     del rpB.l2
@@ -566,8 +558,8 @@ def nearest_pairs(
         l1_nearest, l1_dist = nearest_idx(
             rpB.l1_remain,
             rpB.l2_remain,
-            metric_pair_dist = metric_pair_dist,
-            return_distances = True,
+            metric_pair_dist=metric_pair_dist,
+            return_distances=True,
         )
         for idx_1, idx_2 in enumerate(l1_nearest):
             if idx_2 is None:
@@ -577,8 +569,8 @@ def nearest_pairs(
         l2_nearest, l2_dist = nearest_idx(
             rpB.l2_remain,
             rpB.l1_remain,
-            metric_pair_dist = metric_pair_dist,
-            return_distances = True,
+            metric_pair_dist=metric_pair_dist,
+            return_distances=True,
         )
         for idx_2, idx_1 in enumerate(l2_nearest):
             if idx_1 is None:
@@ -594,11 +586,12 @@ def nearest_pairs(
         del rpB.l2_remain[idx_2]
     return rpB
 
+
 def nearest_idx(
-        lst_1,
-        lst_2 = None,
-        metric_pair_dist = None,
-        return_distances = False,
+    lst_1,
+    lst_2=None,
+    metric_pair_dist=None,
+    return_distances=False,
 ):
     """
     If lst_2 is given, this returns all of the nearest items in lst_2 to lst_1.
@@ -610,16 +603,18 @@ def nearest_idx(
     """
     dists = []
     if lst_2 is not None:
-        #TODO, this could be much more efficient with sorting..
+        # TODO, this could be much more efficient with sorting..
         if metric_pair_dist is None:
+
             def metric_pair_dist(r1, r2):
                 return abs(r1 - r2)
+
         nearest_lst = []
         for r1 in lst_1:
             if r1 is None:
                 nearest_lst.append(None)
                 continue
-            dist_nearest = float('inf')
+            dist_nearest = float("inf")
             idx_nearest = None
             for idx_2, r2 in enumerate(lst_2):
                 if r2 is None:
@@ -631,16 +626,18 @@ def nearest_idx(
             nearest_lst.append(idx_nearest)
             dists.append(dist_nearest)
     else:
-        #TODO, this could be much more efficient with sorting..
+        # TODO, this could be much more efficient with sorting..
         if metric_pair_dist is None:
+
             def metric_pair_dist(r1, r2):
                 return abs(r1 - r2)
+
         nearest_lst = []
         for idx_1, r1 in enumerate(lst_1):
             if r1 is None:
                 nearest_lst.append(None)
                 continue
-            dist_nearest = float('inf')
+            dist_nearest = float("inf")
             idx_nearest = None
             for idx_2, r2 in enumerate(lst_1):
                 if idx_2 == idx_1:
@@ -662,14 +659,14 @@ def nearest_idx(
 def nearest_unique_pairs(
     l1,
     l2,
-    metric_pair_dist = None,
+    metric_pair_dist=None,
 ):
     r12_list = []
-    idx_list  = []
+    idx_list = []
     l1 = list(l1)
     l2 = list(l2)
-    l1_nearest = nearest_idx(l1, l2, metric_pair_dist = metric_pair_dist)
-    l2_nearest = nearest_idx(l2, l1, metric_pair_dist = metric_pair_dist)
+    l1_nearest = nearest_idx(l1, l2, metric_pair_dist=metric_pair_dist)
+    l2_nearest = nearest_idx(l2, l1, metric_pair_dist=metric_pair_dist)
 
     l1_remain = []
     l2_remain = []
@@ -679,19 +676,15 @@ def nearest_unique_pairs(
         if idx_2 is None:
             l1_remain.append(l1[idx_1])
             continue
-        #coding_z = aid.fitter.num_codings[idx_1]
-        #coding_p = aid.fitter.den_codings[idx_2]
-        #TODO annotate about stability
+        # coding_z = aid.fitter.num_codings[idx_1]
+        # coding_p = aid.fitter.den_codings[idx_2]
+        # TODO annotate about stability
         p = l2[idx_2]
         z = l1[idx_1]
         if idx_1 == l2_nearest[idx_2]:
             idx_2_used.append(idx_2)
-            r12_list.append(
-                (z, p)
-            )
-            idx_list.append(
-                (idx_1, idx_2)
-            )
+            r12_list.append((z, p))
+            idx_list.append((idx_1, idx_2))
         else:
             l1_remain.append(l1[idx_1])
             l1_nearest[idx_1] = None
@@ -700,14 +693,13 @@ def nearest_unique_pairs(
         if idx_2 not in idx_2_used:
             l2_remain.append(p)
             l2_nearest[idx_2] = None
-    assert(len(r12_list) + len(l1_remain) == len(l1))
-    assert(len(r12_list) + len(l2_remain) == len(l2))
+    assert len(r12_list) + len(l1_remain) == len(l1)
+    assert len(r12_list) + len(l2_remain) == len(l2)
     return Structish(
-        r12_list   = r12_list,
-        l1_remain  = l1_remain,
-        l2_remain  = l2_remain,
-        idx_list   = idx_list,
-        l1         = l1_nearest,
-        l2         = l2_nearest,
+        r12_list=r12_list,
+        l1_remain=l1_remain,
+        l2_remain=l2_remain,
+        idx_list=idx_list,
+        l1=l1_nearest,
+        l2=l2_nearest,
     )
-
