@@ -404,6 +404,10 @@ class rtAAAResults(object):
         return
 
     def choose(self, order):
+        """ Select which order to return.
+
+        This method selects this or a lesser order to return the results for.
+        """
         # go down in index
         for idx in range(len(self.fit_list) - 1, -1, -1):
             if self.fit_list[idx]["order"] < order:
