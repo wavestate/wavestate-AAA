@@ -8,25 +8,25 @@
 """
 import pytest
 import numpy as np
-from os import path
 import scipy.signal
 
-from IIRrational.pytest import (  # noqa: F401
+from wavestate.iirrational.representations import asZPKTF
+from wavestate.iirrational.testing import IIRrational_data
+
+from wavestate.utilities.mpl import mplfigB
+
+from wavestate.AAA import tfAAA
+
+from wavestate.pytest.fixtures import (  # noqa: F401
     tpath_join,
     plot,
-    pprint,
+    dprint,
     tpath,
     tpath_preclear,
-    Timer,
+    test_trigger,
 )
-from IIRrational.representations import asZPKTF
-from IIRrational.testing import IIRrational_data
 
-from IIRrational.utilities.mpl import mplfigB
-from IIRrational.AAA import tfAAA
-
-
-def test_AAA_mod(tpath_join, tpath_preclear, pprint):
+def test_AAA_mod(tpath_join, tpath_preclear, dprint):
     ZPK1 = asZPKTF(
         (
             (
@@ -62,10 +62,10 @@ def test_AAA_mod(tpath_join, tpath_preclear, pprint):
         # rtype = 'log',
         # supports = (1e-2, 1e-1, 4.2e-1, 5.5e-1, 1.5, 2.8, 1, 5e-1, 2),
     )
-    pprint("weights", results.wvals)
-    pprint("poles", results.poles)
-    pprint("zeros", results.zeros)
-    pprint("gain", results.gain)
+    dprint("weights", results.wvals)
+    dprint("poles", results.poles)
+    dprint("zeros", results.zeros)
+    dprint("gain", results.gain)
 
     TF2 = results(F_Hz)
     axB = mplfigB(Nrows=2)
@@ -95,7 +95,7 @@ def test_AAA_mod(tpath_join, tpath_preclear, pprint):
         10,
     ],
 )
-def test_AAA_rand6_lin(test_trigger, tpath_join, tpath_preclear, pprint, plot, set_num):
+def test_AAA_rand6_lin(test_trigger, tpath_join, tpath_preclear, dprint, plot, set_num):
     data = IIRrational_data("rand6_lin100E", set_num=set_num)
     F_Hz = data.F_Hz
     TF1 = data.rep_s.data
@@ -110,11 +110,11 @@ def test_AAA_rand6_lin(test_trigger, tpath_join, tpath_preclear, pprint, plot, s
         rtype="log",
         # supports = (1e-2, 1e-1, 4.2e-1, 5.5e-1, 1.5, 2.8, 1, 5e-1, 2),
     )
-    pprint("weights", results.wvals)
-    pprint("supports", results.supports)
-    pprint("poles", results.poles)
-    pprint("zeros", results.zeros)
-    pprint("gain", results.gain)
+    dprint("weights", results.wvals)
+    dprint("supports", results.supports)
+    dprint("poles", results.poles)
+    dprint("zeros", results.zeros)
+    dprint("gain", results.gain)
 
     _, TF3 = scipy.signal.freqs_zpk(
         results.zeros, results.poles, results.gain, worN=F_Hz
@@ -143,8 +143,8 @@ def test_AAA_rand6_lin(test_trigger, tpath_join, tpath_preclear, pprint, plot, s
             axB.save(tpath_join("test_fail"))
 
     with test_trigger(trigger, plot=plot):
-        pprint(TF2 / TF1)
-        pprint(TF3 / TF1)
+        dprint(TF2 / TF1)
+        dprint(TF3 / TF1)
         np.testing.assert_allclose(TF2 / TF1, 1, rtol=1e-3)
         np.testing.assert_allclose(
             np.quantile(abs(TF3 / TF1 - 1), 0.95), 0, rtol=0, atol=1e-4
@@ -168,7 +168,7 @@ def test_AAA_rand6_lin(test_trigger, tpath_join, tpath_preclear, pprint, plot, s
         10,
     ],
 )
-def test_AAA_rand6_log(test_trigger, tpath_join, tpath_preclear, pprint, plot, set_num):
+def test_AAA_rand6_log(test_trigger, tpath_join, tpath_preclear, dprint, plot, set_num):
     data = IIRrational_data("rand6_log100E", set_num=set_num)
     F_Hz = data.F_Hz
     TF1 = data.rep_s.data
@@ -184,16 +184,16 @@ def test_AAA_rand6_log(test_trigger, tpath_join, tpath_preclear, pprint, plot, s
         rtype="log",
         # supports = (1e-2, 1e-1, 4.2e-1, 5.5e-1, 1.5, 2.8, 1, 5e-1, 2),
     )
-    pprint("weights", results.wvals)
-    pprint("supports", results.supports)
+    dprint("weights", results.wvals)
+    dprint("supports", results.supports)
 
-    pprint("poles true", data.rep_s.poles.fullplane)
-    pprint("zeros true", data.rep_s.zeros.fullplane)
-    pprint("gain true", data.rep_s.gain)
+    dprint("poles true", data.rep_s.poles.fullplane)
+    dprint("zeros true", data.rep_s.zeros.fullplane)
+    dprint("gain true", data.rep_s.gain)
 
-    pprint("poles fit", results.poles)
-    pprint("zeros fit", results.zeros)
-    pprint("gain fit", results.gain)
+    dprint("poles fit", results.poles)
+    dprint("zeros fit", results.zeros)
+    dprint("gain fit", results.gain)
 
     # assert(len(data.rep_s.poles.fullplane) == len(results.poles))
     # assert(len(data.rep_s.zeros.fullplane) == len(results.zeros))
@@ -225,8 +225,8 @@ def test_AAA_rand6_log(test_trigger, tpath_join, tpath_preclear, pprint, plot, s
             axB.save(tpath_join("test_fail"))
 
     with test_trigger(trigger, plot=plot):
-        pprint("TF2/TF1 - 1", TF2 / TF1 - 1)
-        pprint("TF3/TF1 - 1", TF3 / TF1 - 1)
+        dprint("TF2/TF1 - 1", TF2 / TF1 - 1)
+        dprint("TF3/TF1 - 1", TF3 / TF1 - 1)
         np.testing.assert_allclose(
             np.quantile(abs(TF2 / TF1 - 1), 0.95), 0, rtol=0, atol=1e-3
         )

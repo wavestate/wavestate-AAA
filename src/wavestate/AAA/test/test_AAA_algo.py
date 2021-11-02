@@ -6,24 +6,22 @@
 # with details inline in source files, comments, and docstrings.
 """
 """
-import pytest
 import numpy as np
-from os import path
+import pytest
 
-from IIRrational.pytest import (  # noqa: F401
+from wavestate.iirrational.representations import asZPKTF
+from wavestate.utilities.mpl import mplfigB
+
+
+from wavestate.pytest import (  # noqa: F401
     tpath_join,
     plot,
-    pprint,
+    dprint,
     tpath,
     tpath_preclear,
 )
-from IIRrational.v2.__main__ import IIRrationalV2fit
-from IIRrational.representations import ZPKTF, asZPKTF
 
-from IIRrational.utilities.mpl import mplfigB
-
-
-def test_AAA_sym(tpath_join, tpath_preclear, pprint):
+def test_AAA_sym(tpath_join, tpath_preclear, dprint):
     ZPK1 = asZPKTF(((-0.1 + 5j, -0.1 - 5j), (-2, -2), 1))
     F_Hz = np.linspace(0, 10, 100)
     sF_Hz = 1j * F_Hz
@@ -83,7 +81,7 @@ def test_AAA_sym(tpath_join, tpath_preclear, pprint):
         Widx += 1
     Vn = np.asarray(Vn).T
     Vd = np.asarray(Vd).T
-    pprint(bad_Fidx)
+    dprint(bad_Fidx)
     Vd[bad_Fidx, :] = 0
     Vn[bad_Fidx, :] = 0
     Hd1 = Vd * TF1.reshape(-1, 1)
@@ -100,19 +98,19 @@ def test_AAA_sym(tpath_join, tpath_preclear, pprint):
     Hblock.append([Hs2.imag])
     SX1 = np.block(Hblock)
     u, s, v = np.linalg.svd(SX1)
-    pprint(s)
-    pprint(v)
+    dprint(s)
+    dprint(v)
     Ws = v[-1, :].conjugate()
-    pprint(Ws)
+    dprint(Ws)
     # Ws = np.array(wvals)
-    pprint("Ws", Ws)
+    dprint("Ws", Ws)
     # Ws = [1 + 1j, 1j - 1j]
 
     N = Vn @ Ws
     D = Vd @ Ws
 
     TF2 = N / D
-    pprint(TF2.shape)
+    dprint(TF2.shape)
 
     axB.ax0.semilogy(F_Hz, abs(TF1))
     axB.ax0.semilogy(F_Hz, abs(TF2))
@@ -125,39 +123,13 @@ def test_AAA_sym(tpath_join, tpath_preclear, pprint):
     return
 
 
-def test_AAA2(tpath_join, tpath_preclear, pprint):
-    from aaa import aaa
-
-    ZPK1 = asZPKTF(((-0.1 + 5j, -0.1 - 5j), (-2, -2), 1))
-    F_Hz = np.linspace(-10, 10, 100)
-    sF_Hz = 1j * F_Hz
-    TF1 = ZPK1.xfer_eval(F_Hz=F_Hz)
-
-    r = aaa(TF1, sF_Hz)
-    axB = mplfigB()
-    pprint(r.nodes)
-    pprint(r.values)
-    pprint(r.weights)
-
-    axB.ax0.semilogy(F_Hz, abs(TF1))
-    axB.ax0.semilogy(F_Hz, abs(r(sF_Hz)))
-    # axB.ax0.semilogy(F_Hz, abs(Vn[:, 0]))
-    # axB.ax0.semilogy(F_Hz, abs(Vn[:, 1]))
-    # axB.ax0.semilogy(F_Hz, abs())
-    # axB.ax0.semilogy(F_Hz, abs(N))
-    # axB.ax0.semilogy(F_Hz, abs(D))
-    axB.save(tpath_join("test"))
-    return
-
-
-def test_AAA3(tpath_join, tpath_preclear, pprint):
+@pytest.mark.xfail(reason="Needs matlab and chebfun")
+def test_AAA3(tpath_join, tpath_preclear, dprint):
     import matlab
     import matlab.engine
 
     eng = matlab.engine.start_matlab()
     eng.addpath("~/local/projects_sync/matlab/chebfun/")
-
-    from aaa import aaa
 
     ZPK1 = asZPKTF(((-0.1 + 5j, -0.1 - 5j), (-2, -2), 1))
     F_Hz = np.linspace(0, 10, 100)
@@ -174,9 +146,9 @@ def test_AAA3(tpath_join, tpath_preclear, pprint):
     eng.workspace["z"] = mc(sF_Hz)
     eng.workspace["r"] = r
     tf2 = np.array(eng.eval("r(z);")).reshape(-1)
-    pprint("z", zj)
-    pprint("f", fj)
-    pprint("w", wj)
+    dprint("z", zj)
+    dprint("f", fj)
+    dprint("w", wj)
 
     axB = mplfigB()
     axB.ax0.semilogy(F_Hz, abs(TF1))
@@ -190,7 +162,7 @@ def test_AAA3(tpath_join, tpath_preclear, pprint):
     return
 
 
-def test_AAA_success(tpath_join, tpath_preclear, pprint):
+def test_AAA_success(tpath_join, tpath_preclear, dprint):
     ZPK1 = asZPKTF(((-0.1 + 5j, -0.1 - 5j), (-2, -2), 1))
     F_Hz = np.linspace(0, 10, 100)
     sF_Hz = 1j * F_Hz
@@ -240,7 +212,7 @@ def test_AAA_success(tpath_join, tpath_preclear, pprint):
             Vd[:, Widx] = 1 / bary_D
         bad_Fidx.extend(np.argwhere(~np.isfinite(bary_D))[:, 0])
         Widx += 1
-    pprint(bad_Fidx)
+    dprint(bad_Fidx)
     Vd[bad_Fidx, :] = 0
     Vn[bad_Fidx, :] = 0
     Hd1 = Vd * TF1.reshape(-1, 1)
@@ -250,19 +222,19 @@ def test_AAA_success(tpath_join, tpath_preclear, pprint):
 
     SX1 = np.block([[Hd1 - Hn1]])
     u, s, v = np.linalg.svd(SX1)
-    pprint(s)
-    pprint(v)
+    dprint(s)
+    dprint(v)
     Ws = v[-1, :].conjugate()
-    pprint(Ws)
+    dprint(Ws)
     # Ws = np.array(wvals)
-    pprint("Ws", Ws)
+    dprint("Ws", Ws)
     # Ws = [1 + 1j, 1j - 1j]
 
     N = Vn @ Ws
     D = Vd @ Ws
 
     TF2 = N / D
-    pprint(TF2.shape)
+    dprint(TF2.shape)
 
     axB.ax0.semilogy(F_Hz, abs(TF1))
     axB.ax0.semilogy(F_Hz, abs(TF2))

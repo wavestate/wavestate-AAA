@@ -10,9 +10,13 @@
 
 from ._version import version, __version__, version_info
 
+from .AAA import (
+    tfAAA,
+)
 
 __all__ = [
     "version",
     "__version__",
     "version_info",
+    "tfAAA",
 ]
